@@ -19,7 +19,7 @@ public class Main extends JFrame {
     private DataMobilPanel dataMobilPanel;
      private DataSopirPanel dataSopirPanel;
 
-    // Variabel untuk menyimpan referensi ke menu dinamis
+    // Variabel untuk menyimpan referensi ke menu dinamiss
     private JMenu tambahPelangganMenu;
     private JMenu tambahMobilMenu;
     private JMenu tambahPemesanMenu;
