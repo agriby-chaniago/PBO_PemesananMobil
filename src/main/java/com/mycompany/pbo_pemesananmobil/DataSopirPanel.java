@@ -1,62 +1,73 @@
 package com.mycompany.pbo_pemesananmobil;
 
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableCellEditor;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 
 public class DataSopirPanel extends JPanel {
 
-    private List<Object[]> allData;
     private DefaultTableModel model;
     private JTable table;
+    private List<Object[]> allData;
     private DatabaseManager dbManager;
 
     public DataSopirPanel() {
         setLayout(new BorderLayout());
         dbManager = DatabaseManager.getInstance();
-        model = new DefaultTableModel(new String[]{"ID", "Nama Sopir", "Email", "Nomer Telepon", "Alamat", "Status Sopir", "Harga Sewa per Hari", "Created At"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Nonaktifkan edit langsung di tabel
-            }
-        };
+
+        // Membuat model tabel dengan kolom termasuk "Delete"
+        model = new DefaultTableModel(new String[]{
+                "ID", "Nama Sopir", "Email", "Nomor Telepon", "Alamat", "Status Sopir", "Harga Sewa", "Created At", "Delete"
+        }, 0);
+
         table = new JTable(model);
 
-        fetchAndDisplayData();
+        // Tambahkan tombol Delete pada kolom terakhir
+        table.getColumn("Delete").setCellRenderer(new DeleteButtonRenderer());
+        table.getColumn("Delete").setCellEditor(new DeleteButtonEditor());
 
-        // Tambahkan MouseListener untuk mendeteksi klik dua kali pada baris
+        // Tambahkan MouseListener untuk mendeteksi klik pada baris
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {  // Double-click
-                    int selectedRow = table.convertRowIndexToModel(table.getSelectedRow());
-                    Object[] rowData = allData.get(selectedRow);
-                    int sopirId = (int) rowData[0];  // Ambil ID sopir
-                    JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(DataSopirPanel.this);
-                    if (parentFrame != null) {
-                        new EditSopirDialog(parentFrame, sopirId, rowData, DataSopirPanel.this).setVisible(true);
-                    } else {
-                        System.err.println("Parent frame is null.");
+                int row = table.rowAtPoint(e.getPoint());
+                if (row != -1) {
+                    int modelRow = table.convertRowIndexToModel(row);
+                    Object[] rowData = new Object[model.getColumnCount()];
+                    for (int i = 0; i < model.getColumnCount(); i++) {
+                        rowData[i] = model.getValueAt(modelRow, i);
                     }
+
+                    // Buka EditSopirDialog dengan data baris yang dipilih
+                    EditSopirDialog editDialog = new EditSopirDialog((JFrame) SwingUtilities.getWindowAncestor(DataSopirPanel.this), (int) rowData[0], rowData, DataSopirPanel.this);
+                    editDialog.setVisible(true);
                 }
             }
         });
 
+        fetchAndDisplayData();
+
         add(new JScrollPane(table), BorderLayout.CENTER);
     }
 
+    // Mengambil data dari database dan menampilkan di tabel
     public void fetchAndDisplayData() {
         allData = new ArrayList<>();
+        model.setRowCount(0); // Kosongkan tabel sebelum menambahkan data baru
         try {
             ResultSet rs = dbManager.fetchSopirData();
             while (rs.next()) {
-                allData.add(new Object[]{
+                Object[] rowData = {
                         rs.getInt("id"),
                         rs.getString("nama_sopir"),
                         rs.getString("email"),
@@ -64,31 +75,80 @@ public class DataSopirPanel extends JPanel {
                         rs.getString("alamat"),
                         rs.getString("status_sopir"),
                         rs.getDouble("harga_sewa_per_hari"),
-                        rs.getTimestamp("created_at")
-                });
+                        rs.getTimestamp("created_at"),
+                        "Delete"
+                };
+                allData.add(rowData);
+                model.addRow(rowData);
             }
-
-            updateTableData();
-            System.out.println("Data sopir berhasil dimuat, jumlah data: " + allData.size());
-
         } catch (SQLException e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Gagal mengambil data sopir dari database.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal memuat data sopir dari database.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void updateTableData() {
-        model.setRowCount(0);
-        for (Object[] rowData : allData) {
-            model.addRow(rowData);
+    // Renderer untuk kolom tombol Delete
+    private class DeleteButtonRenderer extends JButton implements TableCellRenderer {
+        public DeleteButtonRenderer() {
+            setText("Delete");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            return this;
         }
     }
 
-    public boolean hasData() {
-        return allData != null && !allData.isEmpty();
+    // Editor untuk kolom tombol Delete
+    private class DeleteButtonEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
+        private final JButton deleteButton;
+        private int currentRow;
+
+        public DeleteButtonEditor() {
+            deleteButton = new JButton("Delete");
+            deleteButton.addActionListener((ActionListener) this);
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            currentRow = row; // Simpan baris yang sedang diedit
+            return deleteButton;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Delete";
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            stopCellEditing(); // Hentikan mode editing
+
+            // Ambil ID dari baris yang dipilih
+            int id = (int) model.getValueAt(currentRow, 0);
+
+            // Konfirmasi penghapusan
+            int confirm = JOptionPane.showConfirmDialog(DataSopirPanel.this,
+                    "Apakah Anda yakin ingin menghapus data ini?",
+                    "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                // Hapus data dari database dan cek keberhasilannya
+                boolean isDeleted = dbManager.deleteSopir(id);
+
+                if (isDeleted) {
+                    // Hapus data dari tabel jika penghapusan berhasil
+                    model.removeRow(currentRow);
+                    JOptionPane.showMessageDialog(DataSopirPanel.this, "Data sopir berhasil dihapus.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    // Tampilkan pesan jika penghapusan gagal
+                    JOptionPane.showMessageDialog(DataSopirPanel.this, "Gagal menghapus data sopir. Periksa apakah ada pemesanan yang terkait.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
     }
 
-    // Tambahkan metode refreshData untuk memperbarui tabel setelah edit
+    // Tambahkan metode ini di dalam DataSopirPanel
     public void refreshData() {
         fetchAndDisplayData();
     }

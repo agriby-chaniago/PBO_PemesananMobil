@@ -140,31 +140,25 @@ public class EditDialog extends JDialog {
     }
 
     private void fetchMobilHargaPerHari() {
-        try (Connection conn = dbManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT harga_sewa_per_hari FROM mobil WHERE id = ?")) {
-            stmt.setInt(1, mobilMap.get(idMobilDropdown.getSelectedItem().toString()));
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                mobilHargaPerHari = rs.getDouble("harga_sewa_per_hari");
-                updateTotalHarga();
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error loading harga from Mobil", "Database Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-        }
+        fetchHargaPerHari("mobil", idMobilDropdown, mobilMap, (harga) -> mobilHargaPerHari = harga);
     }
 
     private void fetchSopirHargaPerHari() {
+        fetchHargaPerHari("sopir", idSopirDropdown, sopirMap, (harga) -> sopirHargaPerHari = harga);
+    }
+
+    private void fetchHargaPerHari(String tableName, JComboBox<String> dropdown, Map<String, Integer> map, java.util.function.Consumer<Double> hargaConsumer) {
         try (Connection conn = dbManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT harga_sewa_per_hari FROM sopir WHERE id = ?")) {
-            stmt.setInt(1, sopirMap.get(idSopirDropdown.getSelectedItem().toString()));
+             PreparedStatement stmt = conn.prepareStatement("SELECT harga_sewa_per_hari FROM " + tableName + " WHERE id = ?")) {
+            stmt.setInt(1, map.get(dropdown.getSelectedItem().toString()));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                sopirHargaPerHari = rs.getDouble("harga_sewa_per_hari");
+                double harga = rs.getDouble("harga_sewa_per_hari");
+                hargaConsumer.accept(harga);
                 updateTotalHarga();
             }
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Error loading harga from Sopir", "Database Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Error loading harga from " + tableName, "Database Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
     }
@@ -211,7 +205,6 @@ public class EditDialog extends JDialog {
     }
 
     private void saveToDatabase() {
-
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() {
@@ -324,7 +317,6 @@ public class EditDialog extends JDialog {
         }
     }
 
-
     private JDialog createProgressDialog() {
         JDialog dialog = new JDialog(this, "Loading", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout());
@@ -340,9 +332,6 @@ public class EditDialog extends JDialog {
 
         return dialog;
     }
-
-
-    // Other existing methods (createCurrencyField, addLabelAndField, etc.)
 
     private JFormattedTextField createCurrencyField(String valueText) {
         NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));

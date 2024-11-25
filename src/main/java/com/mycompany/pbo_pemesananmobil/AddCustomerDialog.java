@@ -21,7 +21,7 @@ public class AddCustomerDialog extends JDialog {
         // Menambahkan field input
         JTextField namaField = new JTextField(20);
         JTextField nomorTeleponField = new JTextField(20);
-         JTextField passwordField = new JTextField(20);
+        JTextField passwordField = new JTextField(20);
         JTextField alamatField = new JTextField(20);
         JTextField emailField = new JTextField(20);
 
@@ -35,10 +35,10 @@ public class AddCustomerDialog extends JDialog {
         gbc.gridx = 0;
         gbc.gridy = 1;
         add(new JLabel("Nomor Telepon:"), gbc);
-        
+
         gbc.gridx = 1;
         add(nomorTeleponField, gbc);
-        
+
         gbc.gridx = 0;
         gbc.gridy = 2;
         add(new JLabel("Password:"), gbc);
@@ -73,23 +73,42 @@ public class AddCustomerDialog extends JDialog {
 
     private void saveCustomer(String nama, String nomorTelepon, String password, String alamat, String email) {
         // Validasi input
-if (nama.isEmpty() || nomorTelepon.isEmpty() || password.isEmpty() || alamat.isEmpty() || email.isEmpty()) {
-    JOptionPane.showMessageDialog(this, "Semua field harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
-    return;
-}
+        if (nama.isEmpty() || !nama.matches("[a-zA-Z\\s']+")) {
+            JOptionPane.showMessageDialog(this, "Nama tidak boleh kosong dan hanya boleh menggunakan huruf, spasi, dan petik satu (').", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-// Simpan ke database
-DatabaseManager dbManager = DatabaseManager.getInstance();
-String query = "INSERT INTO pelanggan (nama_pelanggan, nomor_telepon, password, alamat, email, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
-Object[] params = {nama, nomorTelepon, password, alamat, email};
-int rowsInserted = dbManager.updateData(query, params);
+        if (!nomorTelepon.matches("\\d{11,}")) {
+            JOptionPane.showMessageDialog(this, "Nomor telepon harus angka dan minimal 11 angka.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-if (rowsInserted > 0) {
-    JOptionPane.showMessageDialog(this, "Pelanggan berhasil ditambahkan.");
-    dispose(); // Tutup dialog setelah berhasil simpan
-    pelangganPanel.refreshData(); // Refresh data pelanggan di panel utama
-} else {
-    JOptionPane.showMessageDialog(this, "Gagal menambahkan pelanggan.", "Error", JOptionPane.ERROR_MESSAGE);
-}
+        if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            JOptionPane.showMessageDialog(this, "Email harus sesuai format email.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!password.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$")) {
+            JOptionPane.showMessageDialog(this, "Password harus menggunakan kombinasi huruf, angka, dan karakter khusus, minimal 8 karakter.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (alamat.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Alamat tidak boleh kosong.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        // Simpan ke database
+        DatabaseManager dbManager = DatabaseManager.getInstance();
+        String query = "INSERT INTO pelanggan (nama_pelanggan, nomor_telepon, password, alamat, email, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
+        Object[] params = {nama, nomorTelepon, password, alamat, email};
+        int rowsInserted = dbManager.updateData(query, params);
+
+        if (rowsInserted > 0) {
+            JOptionPane.showMessageDialog(this, "Pelanggan berhasil ditambahkan.");
+            dispose(); // Tutup dialog setelah berhasil simpan
+            pelangganPanel.refreshData(); // Refresh data pelanggan di panel utama
+        } else {
+            JOptionPane.showMessageDialog(this, "Gagal menambahkan pelanggan.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

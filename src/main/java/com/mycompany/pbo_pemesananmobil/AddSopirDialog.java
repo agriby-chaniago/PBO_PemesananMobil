@@ -89,8 +89,34 @@ public class AddSopirDialog extends JDialog {
 
     private void saveSopir(String namaSopir, String email, String password, String nomerTelepon, String alamat, String statusSopir, String hargaSewaPerHari) {
         // Validasi input
-        if (namaSopir.isEmpty() || email.isEmpty() || password.isEmpty() || nomerTelepon.isEmpty() || alamat.isEmpty() || statusSopir.isEmpty() || hargaSewaPerHari.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Semua field harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
+        if (namaSopir.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nama sopir tidak boleh kosong.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            JOptionPane.showMessageDialog(this, "Email harus sesuai format email.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!password.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$")) {
+            JOptionPane.showMessageDialog(this, "Password harus menggunakan kombinasi huruf, angka, dan karakter khusus, minimal 8 karakter.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!nomerTelepon.matches("\\d{11,}")) {
+            JOptionPane.showMessageDialog(this, "Nomer telepon harus angka dan minimal 11 angka.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            double hargaSewa = Double.parseDouble(hargaSewaPerHari);
+            if (hargaSewa <= 0) {
+                JOptionPane.showMessageDialog(this, "Harga sewa per hari harus lebih besar dari 0.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Harga sewa per hari harus berupa angka yang valid.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 

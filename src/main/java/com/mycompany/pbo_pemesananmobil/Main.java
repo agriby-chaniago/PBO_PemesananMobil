@@ -1,7 +1,6 @@
 package com.mycompany.pbo_pemesananmobil;
 
 import java.awt.*;
-
 import javax.swing.*;
 
 public class Main extends JFrame {
@@ -10,7 +9,7 @@ public class Main extends JFrame {
     private final DataTablePanel dataTablePanel;
     private final DataPelangganPanel dataPelangganPanel;
     private final DataMobilPanel dataMobilPanel;
-     private final DataSopirPanel dataSopirPanel;
+    private final DataSopirPanel dataSopirPanel;
 
     // Variabel untuk menyimpan referensi ke menu dinamis
     private final JMenu tambahPelangganMenu;
@@ -127,14 +126,14 @@ public class Main extends JFrame {
         // Ganti menu dinamis ke "Tambah Mobil" saat berada di Data Mobil
         switchToMenu(tambahMobilMenu);
     }
-    
+
     private void showDataSopir() {
         contentArea.removeAll();
         contentArea.add(dataSopirPanel, BorderLayout.CENTER);
         contentArea.revalidate();
         contentArea.repaint();
 
-        // Ganti menu dinamis ke "Tambah Mobil" saat berada di Data Mobil
+        // Ganti menu dinamis ke "Tambah Sopir" saat berada di Data Sopir
         switchToMenu(tambahSopirMenu);
     }
 
@@ -145,26 +144,48 @@ public class Main extends JFrame {
     private void openAddMobilDialog() {
         new AddMobilDialog(this, dataMobilPanel).setVisible(true);
     }
-    
-     private void openAddSopirDialog() {
+
+    private void openAddSopirDialog() {
         new AddSopirDialog(this, dataSopirPanel).setVisible(true);
     }
 
     private void openAddOrderDialog() {
         Object[] emptyData = new Object[]{"", "", "", "", "", "", "", "", "", ""};
-        EditDialog addDialog = new EditDialog(this, emptyData, DatabaseManager.getInstance(), -1, dataTablePanel, false);
+        EditDialog addDialog = new EditDialog(this, emptyData, DatabaseManager.getInstance(), -1, dataTablePanel, false) {
+            protected boolean validateInput(Object[] data) {
+                String namaPelanggan = (String) data[1];
+                String namaMobil = (String) data[2];
+                String namaSopir = (String) data[3];
+                String tanggalMulai = (String) data[4];
+                String tanggalSelesai = (String) data[5];
+                String totalHarga = (String) data[7];
+
+                if (namaPelanggan.isEmpty() || namaMobil.isEmpty() || namaSopir.isEmpty() || tanggalMulai.isEmpty() || tanggalSelesai.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Semua field harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return false;
+                }
+
+                try {
+                    double harga = Double.parseDouble(totalHarga);
+                    if (harga <= 0) {
+                        JOptionPane.showMessageDialog(this, "Total harga harus lebih besar dari 0.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(this, "Total harga harus berupa angka yang valid.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return false;
+                }
+
+                return true;
+            }
+        };
         addDialog.setVisible(true);
     }
 
-    // Metode untuk mengganti menu dinamis
     private void switchToMenu(JMenu menu) {
-        menuBar.remove(tambahPelangganMenu);
-        menuBar.remove(tambahMobilMenu);
-        menuBar.remove(tambahPemesanMenu);
-        menuBar.remove(tambahSopirMenu);
-        menuBar.add(menu);  // Tambahkan menu dinamis baru di akhir
+        menuBar.remove(menuBar.getComponentCount() - 1);
+        menuBar.add(menu);
         menuBar.revalidate();
         menuBar.repaint();
     }
-
 }

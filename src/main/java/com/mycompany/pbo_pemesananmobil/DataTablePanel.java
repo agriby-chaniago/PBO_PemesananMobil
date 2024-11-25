@@ -9,11 +9,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class DataTablePanel extends JPanel {
 
@@ -44,8 +41,27 @@ public class DataTablePanel extends JPanel {
         table = new JTable(model);
 
         // Set renderer dan editor khusus untuk kolom "Delete"
-        table.getColumn("Delete").setCellRenderer((TableCellRenderer) new DeleteButtonRenderer());
-        table.getColumn("Delete").setCellEditor((TableCellEditor) new DeleteButtonEditor());
+        table.getColumn("Delete").setCellRenderer(new DeleteButtonRenderer());
+        table.getColumn("Delete").setCellEditor(new DeleteButtonEditor());
+
+        // Tambahkan MouseListener untuk mendeteksi klik pada baris
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                if (row != -1) {
+                    int modelRow = table.convertRowIndexToModel(row);
+                    Object[] rowData = new Object[model.getColumnCount()];
+                    for (int i = 0; i < model.getColumnCount(); i++) {
+                        rowData[i] = model.getValueAt(modelRow, i);
+                    }
+
+                    // Buka EditDialog dengan data baris yang dipilih
+                    EditDialog editDialog = new EditDialog(SwingUtilities.getWindowAncestor(DataTablePanel.this), rowData, dbManager, modelRow, DataTablePanel.this, true);
+                    editDialog.setVisible(true);
+                }
+            }
+        });
 
         add(new JScrollPane(table), BorderLayout.CENTER);
 

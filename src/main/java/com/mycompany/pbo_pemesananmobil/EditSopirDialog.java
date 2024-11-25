@@ -7,7 +7,7 @@ public class EditSopirDialog extends JDialog {
 
     private JTextField namaSopirField;
     private JTextField emailField;
-    private JTextField passwordField;
+    private JPasswordField passwordField;
     private JTextField nomerTeleponField;
     private JTextField alamatField;
     private JComboBox<String> statusSopirComboBox;
@@ -33,7 +33,7 @@ public class EditSopirDialog extends JDialog {
         // Menambahkan field input
         namaSopirField = new JTextField(sopirData[1].toString(), 20);
         emailField = new JTextField(sopirData[2].toString(), 20);
-        passwordField = new JTextField(20); // Password field is not displayed in the table, so it's empty
+        passwordField = new JPasswordField(20); // Password field is not displayed in the table, so it's empty
         nomerTeleponField = new JTextField(sopirData[3].toString(), 20);
         alamatField = new JTextField(sopirData[4].toString(), 20);
         statusSopirComboBox = new JComboBox<>(new String[]{"Tersedia", "Tidak Tersedia"});
@@ -101,13 +101,41 @@ public class EditSopirDialog extends JDialog {
     }
 
     private void saveSopirData() {
-        String namaSopir = namaSopirField.getText();
-        String email = emailField.getText();
-        String password = passwordField.getText();
-        String nomerTelepon = nomerTeleponField.getText();
-        String alamat = alamatField.getText();
+        String namaSopir = namaSopirField.getText().trim();
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword()).trim();
+        String nomerTelepon = nomerTeleponField.getText().trim();
+        String alamat = alamatField.getText().trim();
         String statusSopir = statusSopirComboBox.getSelectedItem().toString();
-        String hargaSewaPerHari = hargaSewaPerHariField.getText();
+        String hargaSewaPerHari = hargaSewaPerHariField.getText().trim();
+
+        // Validate input
+        if (namaSopir.isEmpty() || !namaSopir.matches("[a-zA-Z0-9' ]+")) {
+            JOptionPane.showMessageDialog(this, "Nama tidak boleh kosong dan tidak boleh menggunakan karakter khusus kecuali petik satu (').", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            JOptionPane.showMessageDialog(this, "Format email tidak valid.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!nomerTelepon.matches("\\d{11,}")) {
+            JOptionPane.showMessageDialog(this, "Nomer telepon harus minimal 11 angka.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!password.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$")) {
+            JOptionPane.showMessageDialog(this, "Password harus menggunakan kombinasi huruf, angka, dan karakter khusus, minimal 8 karakter.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            Double.parseDouble(hargaSewaPerHari);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Harga sewa per hari harus berupa angka.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         // Update data di database
         String query = "UPDATE sopir SET nama_sopir = ?, email = ?, password = ?, nomer_telepon = ?, alamat = ?, status_sopir = ?, harga_sewa_per_hari = ? WHERE id = ?";

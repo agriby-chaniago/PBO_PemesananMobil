@@ -89,8 +89,19 @@ public class AddMobilDialog extends JDialog {
 
     private void saveMobil(String fotoMobil, String namaMobil, String tipeMobil, String tahunMobil, String platNomer, String hargaSewaPerHari, String statusMobil) {
         // Validasi input
-        if (fotoMobil.isEmpty() || namaMobil.isEmpty() || tipeMobil.isEmpty() || tahunMobil.isEmpty() || platNomer.isEmpty() || hargaSewaPerHari.isEmpty() || statusMobil.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Semua field harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
+        if (namaMobil.isEmpty() || tipeMobil.isEmpty() || tahunMobil.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nama mobil, tipe mobil, dan tahun mobil tidak boleh kosong.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            double hargaSewa = Double.parseDouble(hargaSewaPerHari);
+            if (hargaSewa <= 0) {
+                JOptionPane.showMessageDialog(this, "Harga sewa per hari harus lebih besar dari 0.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Harga sewa per hari harus berupa angka yang valid.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 

@@ -129,9 +129,6 @@ public class DatabaseManager {
                 int rowsAffected = ps.executeUpdate();
 
                 if (rowsAffected > 0) {
-                    // Menampilkan pesan sukses
-                    JOptionPane.showMessageDialog(null, "Pelanggan berhasil dihapus.", "Success", JOptionPane.INFORMATION_MESSAGE);
-
                     // Jika penghapusan berhasil, refresh data
                     refreshData(); // Pastikan ini dipanggil setelah penghapusan berhasil
                 } else {
@@ -169,6 +166,53 @@ public class DatabaseManager {
         return true;
     }
 
+    public boolean canDeleteSopir(int sopirId) {
+        String checkSql = "SELECT COUNT(*) FROM pemesan_mobil WHERE id_sopir = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(checkSql)) {
 
+            ps.setInt(1, sopirId);  // Set ID sopir yang akan dicek
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                int count = rs.getInt(1);
+                System.out.println("Jumlah pemesanan yang terkait dengan sopir ID " + sopirId + ": " + count);
+                if (count > 0) {
+                    // Jika ada pemesanan, berarti sopir tidak bisa dihapus
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return true; // Jika tidak ada pemesanan terkait, sopir bisa dihapus
+    }
+
+    public boolean deleteSopir(int sopirId) {
+        // Periksa apakah sopir bisa dihapus
+        if (canDeleteSopir(sopirId)) {
+            String deleteSql = "DELETE FROM sopir WHERE id = ?";
+            try (Connection conn = getConnection();
+                 PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+                ps.setInt(1, sopirId);
+                int rowsAffected = ps.executeUpdate();
+
+                if (rowsAffected > 0) {
+                    System.out.println("Sopir berhasil dihapus.");
+                    return true; // Berhasil dihapus
+                } else {
+                    System.out.println("Gagal menghapus sopir.");
+                    return false; // Gagal dihapus
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false; // Gagal karena kesalahan SQL
+            }
+        } else {
+            // Jika sopir tidak dapat dihapus karena ada pemesanan terkait
+            System.out.println("Sopir tidak dapat dihapus karena masih ada pemesanan yang terkait.");
+            return false; // Tidak dapat dihapus
+        }
+    }
 
 }

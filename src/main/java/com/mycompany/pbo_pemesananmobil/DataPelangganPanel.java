@@ -124,14 +124,31 @@ public class DataPelangganPanel extends JPanel {
 
         public DeleteButtonEditor() {
             deleteButton = new JButton("Delete");
-            deleteButton.setPreferredSize(new Dimension(100, 30)); // Sesuaikan ukuran tombol
             deleteButton.addActionListener(e -> {
                 int row = table.getSelectedRow();
                 if (row != -1) {
                     int modelRow = table.convertRowIndexToModel(row);
                     int id = (int) model.getValueAt(modelRow, 0); // Ambil ID dari tabel
-                    deleteData(id); // Hapus data pelanggan
-                    model.removeRow(modelRow); // Hapus baris dari model tabel
+
+                    // Tampilkan konfirmasi sebelum menghapus
+                    int confirm = JOptionPane.showConfirmDialog(DataPelangganPanel.this,
+                            "Apakah Anda yakin ingin menghapus data pelanggan ini?",
+                            "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        // Periksa apakah pelanggan dapat dihapus terlebih dahulu
+                        if (dbManager.canDeletePelanggan(id)) {
+                            // Jika bisa, hapus data dari database
+                            dbManager.deletePelanggan(id);
+
+                            // Jika berhasil menghapus, hapus baris dari model tabel
+                            model.removeRow(modelRow); // Hapus baris dari model tabel
+                            JOptionPane.showMessageDialog(DataPelangganPanel.this, "Pelanggan berhasil dihapus!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                        } else {
+                            // Jika tidak bisa dihapus karena terkait pemesanan, tampilkan pesan error
+                            JOptionPane.showMessageDialog(DataPelangganPanel.this, "Pelanggan tidak dapat dihapus karena masih ada pemesanan yang terkait.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
                 }
             });
         }
@@ -146,5 +163,6 @@ public class DataPelangganPanel extends JPanel {
             return deleteButton;
         }
     }
+
 
 }
