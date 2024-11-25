@@ -2,6 +2,8 @@ package com.mycompany.pbo_pemesananmobil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -20,17 +22,21 @@ public class DataPelangganPanel extends JPanel {
     public DataPelangganPanel() {
         setLayout(new BorderLayout());
         dbManager = DatabaseManager.getInstance();
-        model = new DefaultTableModel(new String[]{"ID", "Nama Pelanggan", "Nomor Telepon", "Alamat", "Email", "Created At"}, 0) {
+        model = new DefaultTableModel(new String[]{"ID", "Nama Pelanggan", "Nomor Telepon", "Alamat", "Email", "Created At", "Delete"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Nonaktifkan edit langsung di tabel
+                return column == 6; // Hanya kolom "Delete" yang bisa diedit
             }
         };
         table = new JTable(model);
 
+        // Menambahkan renderer dan editor tombol Delete pada kolom
+        table.getColumn("Delete").setCellRenderer(new DeleteButtonRenderer());
+        table.getColumn("Delete").setCellEditor(new DeleteButtonEditor());
+
         fetchAndDisplayData();
 
-        // Tambahkan MouseListener untuk mendeteksi klik dua kali pada baris
+        // Menambahkan MouseListener untuk mendeteksi klik dua kali pada baris
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -58,7 +64,8 @@ public class DataPelangganPanel extends JPanel {
                         rs.getString("nomor_telepon"),
                         rs.getString("alamat"),
                         rs.getString("email"),
-                        rs.getTimestamp("created_at")
+                        rs.getTimestamp("created_at"),
+                        new JButton("Delete") // Tombol Delete
                 });
             }
 
@@ -82,8 +89,62 @@ public class DataPelangganPanel extends JPanel {
         return allData != null && !allData.isEmpty();
     }
 
-    // Tambahkan metode refreshData untuk memperbarui tabel setelah edit
     public void refreshData() {
         fetchAndDisplayData();
     }
+
+    private void deleteData(int id) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Apakah Anda yakin ingin menghapus data pelanggan ini?",
+                "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            dbManager.deletePelanggan(id); // Hapus pelanggan dari database
+            refreshData(); // Refresh data tabel setelah penghapusan
+        }
+    }
+
+    // Renderer untuk kolom "Delete"
+    private class DeleteButtonRenderer extends JButton implements TableCellRenderer {
+        public DeleteButtonRenderer() {
+            setText("Delete");
+            setPreferredSize(new Dimension(100, 30)); // Sesuaikan ukuran tombol
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            return this;
+        }
+    }
+
+    // Editor untuk kolom "Delete"
+    private class DeleteButtonEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton deleteButton;
+
+        public DeleteButtonEditor() {
+            deleteButton = new JButton("Delete");
+            deleteButton.setPreferredSize(new Dimension(100, 30)); // Sesuaikan ukuran tombol
+            deleteButton.addActionListener(e -> {
+                int row = table.getSelectedRow();
+                if (row != -1) {
+                    int modelRow = table.convertRowIndexToModel(row);
+                    int id = (int) model.getValueAt(modelRow, 0); // Ambil ID dari tabel
+                    deleteData(id); // Hapus data pelanggan
+                    model.removeRow(modelRow); // Hapus baris dari model tabel
+                }
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Delete";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            return deleteButton;
+        }
+    }
+
 }

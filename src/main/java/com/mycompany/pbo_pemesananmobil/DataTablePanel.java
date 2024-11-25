@@ -2,6 +2,8 @@ package com.mycompany.pbo_pemesananmobil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -26,32 +28,26 @@ public class DataTablePanel extends JPanel {
         setLayout(new BorderLayout());
         dbManager = DatabaseManager.getInstance();
 
-        // Ubah header tabel sesuai dengan nama yang akan ditampilkan
+        // Tambahkan kolom "Delete" di model tabel
         model = new DefaultTableModel(new String[]{
                 "ID", "Nama Pelanggan", "Nama Mobil", "Nama Sopir",
                 "Tanggal Mulai", "Tanggal Selesai", "Tanggal Kembali",
-                "Total Harga", "Status", "Denda", "Created At"
+                "Total Harga", "Status", "Denda", "Created At", "Delete"
         }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Semua sel tidak bisa diedit
+                return column == 11; // Hanya kolom "Delete" yang bisa diedit
             }
         };
 
         // Inisialisasi tabel
         table = new JTable(model);
-        add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Tambahkan MouseListener untuk membuka EditDialog saat baris diklik dua kali
-        table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {  // Klik dua kali
-                    int selectedRow = table.convertRowIndexToModel(table.getSelectedRow());
-                    openEditDialog(selectedRow);
-                }
-            }
-        });
+        // Set renderer dan editor khusus untuk kolom "Delete"
+        table.getColumn("Delete").setCellRenderer((TableCellRenderer) new DeleteButtonRenderer());
+        table.getColumn("Delete").setCellEditor((TableCellEditor) new DeleteButtonEditor());
+
+        add(new JScrollPane(table), BorderLayout.CENTER);
 
         // Ambil dan tampilkan data dari database
         fetchAndDisplayData();
@@ -59,13 +55,6 @@ public class DataTablePanel extends JPanel {
         // Tambahkan panel untuk pagination
         JPanel paginationPanel = createPaginationPanel();
         add(paginationPanel, BorderLayout.SOUTH);
-    }
-
-    // Fungsi untuk membuka EditDialog
-    private void openEditDialog(int rowIndex) {
-        Object[] rowData = allData.get(rowIndex);
-        EditDialog editDialog = new EditDialog(SwingUtilities.getWindowAncestor(this), rowData, dbManager, rowIndex, this, true);
-        editDialog.setVisible(true);
     }
 
     public void fetchAndDisplayData() {
@@ -82,31 +71,24 @@ public class DataTablePanel extends JPanel {
                     "ORDER BY p.id DESC";
 
             ResultSet rs = dbManager.executeQuery(query);
-            SimpleDateFormat dateFormatter = new SimpleDateFormat("dd-MM-yyyy", new Locale("id", "ID"));
-            NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
-
             while (rs.next()) {
-                String tanggalMulai = rs.getTimestamp("tanggal_mulai") != null ? dateFormatter.format(rs.getTimestamp("tanggal_mulai")) : "";
-                String tanggalSelesai = rs.getTimestamp("tanggal_selesai") != null ? dateFormatter.format(rs.getTimestamp("tanggal_selesai")) : "";
-                String tanggalKembali = rs.getDate("tanggal_kembali") != null ? dateFormatter.format(rs.getDate("tanggal_kembali")) : "";
-
                 allData.add(new Object[]{
                         rs.getInt("id"),
                         rs.getString("nama_pelanggan"),
                         rs.getString("nama_mobil"),
                         rs.getString("nama_sopir"),
-                        tanggalMulai,
-                        tanggalSelesai,
-                        tanggalKembali,
-                        currencyFormatter.format(rs.getDouble("total_harga")),
+                        rs.getDate("tanggal_mulai"),
+                        rs.getDate("tanggal_selesai"),
+                        rs.getDate("tanggal_kembali"),
+                        rs.getDouble("total_harga"),
                         rs.getString("status_pemesanan"),
-                        currencyFormatter.format(rs.getDouble("denda")),
-                        rs.getTimestamp("created_at") != null ? dateFormatter.format(rs.getTimestamp("created_at")) : ""
+                        rs.getDouble("denda"),
+                        rs.getDate("created_at"),
+                        "Delete" // Teks tombol "Delete"
                 });
             }
 
             displayPage(1);
-            System.out.println("Data berhasil dimuat, jumlah data: " + allData.size());
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -149,7 +131,58 @@ public class DataTablePanel extends JPanel {
         return paginationPanel;
     }
 
-    public boolean hasData() {
-        return allData != null && !allData.isEmpty();
+    // Renderer untuk kolom "Delete"
+    private class DeleteButtonRenderer extends JButton implements TableCellRenderer {
+        public DeleteButtonRenderer() {
+            setText("Delete");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            return this;
+        }
+    }
+
+    // Editor untuk kolom "Delete"
+    private class DeleteButtonEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton deleteButton;
+
+        public DeleteButtonEditor() {
+            deleteButton = new JButton("Delete");
+            deleteButton.addActionListener(e -> {
+                int row = table.getSelectedRow();
+                if (row != -1) {
+                    int modelRow = table.convertRowIndexToModel(row);
+                    int id = (int) model.getValueAt(modelRow, 0); // Ambil ID dari tabel
+
+                    // Tampilkan konfirmasi sebelum menghapus
+                    int confirm = JOptionPane.showConfirmDialog(DataTablePanel.this,
+                            "Apakah Anda yakin ingin menghapus data ini?",
+                            "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        deleteData(id); // Jika pengguna memilih Yes, hapus data
+                        model.removeRow(modelRow); // Hapus baris dari model tabel
+                    }
+                }
+            });
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Delete";
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            return deleteButton;
+        }
+    }
+
+    private void deleteData(int id) {
+        String query = "DELETE FROM pemesan_mobil WHERE id = ?";
+        dbManager.updateData(query, new Object[]{id});
+        JOptionPane.showMessageDialog(this, "Data berhasil dihapus!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
     }
 }

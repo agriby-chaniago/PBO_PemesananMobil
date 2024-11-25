@@ -1,30 +1,23 @@
 package com.mycompany.pbo_pemesananmobil;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Font;
+import java.awt.*;
 
-import javax.swing.Box;
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 
 public class Main extends JFrame {
 
-    private JPanel contentArea;
-    private DataTablePanel dataTablePanel;
-    private DataPelangganPanel dataPelangganPanel;
-    private DataMobilPanel dataMobilPanel;
-     private DataSopirPanel dataSopirPanel;
+    private final JPanel contentArea;
+    private final DataTablePanel dataTablePanel;
+    private final DataPelangganPanel dataPelangganPanel;
+    private final DataMobilPanel dataMobilPanel;
+     private final DataSopirPanel dataSopirPanel;
 
     // Variabel untuk menyimpan referensi ke menu dinamis
-    private JMenu tambahPelangganMenu;
-    private JMenu tambahMobilMenu;
-    private JMenu tambahPemesanMenu;
-    private JMenu tambahSopirMenu;
-    private JMenuBar menuBar;
+    private final JMenu tambahPelangganMenu;
+    private final JMenu tambahMobilMenu;
+    private final JMenu tambahPemesanMenu;
+    private final JMenu tambahSopirMenu;
+    private final JMenuBar menuBar;
 
     public Main() {
         setTitle("Aplikasi Pemesanan Mobil");
@@ -174,7 +167,4 @@ public class Main extends JFrame {
         menuBar.repaint();
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Main().setVisible(true));
-    }
 }
