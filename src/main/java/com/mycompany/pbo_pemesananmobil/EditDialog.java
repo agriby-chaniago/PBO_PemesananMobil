@@ -65,15 +65,12 @@ public class EditDialog extends JDialog {
         statusField.setSelectedItem(rowData[8].toString());
         dendaField = createCurrencyField(rowData[9].toString());
 
-        // Set default dates
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
         String todayDate = dateFormat.format(new Date());
 
-        // Initialize tanggalMulaiField and tanggalSelesaiField with default today date
         tanggalMulaiField = new JTextField(isEditMode ? rowData[4].toString() : todayDate, 15);
         JButton tanggalMulaiButton = createDateButton(tanggalMulaiField);
 
-        // Set tanggalSelesaiField to today date or existing value if in edit mode
         tanggalSelesaiField = new JTextField(isEditMode ? rowData[5].toString() : todayDate, 15);
         JButton tanggalSelesaiButton = createDateButton(tanggalSelesaiField);
 
@@ -103,6 +100,10 @@ public class EditDialog extends JDialog {
         tanggalSelesaiField.addActionListener(e -> updateTotalHarga());
         idMobilDropdown.addActionListener(e -> fetchMobilHargaPerHari());
         idSopirDropdown.addActionListener(e -> fetchSopirHargaPerHari());
+
+        // Fetch prices and update total price
+        fetchMobilHargaPerHari();
+        fetchSopirHargaPerHari();
     }
 
     private JComboBox<String> createDropdown(String tableName, String columnName, boolean fetchPrice, String defaultOption, String selectedItem) {
@@ -140,11 +141,17 @@ public class EditDialog extends JDialog {
     }
 
     private void fetchMobilHargaPerHari() {
-        fetchHargaPerHari("mobil", idMobilDropdown, mobilMap, (harga) -> mobilHargaPerHari = harga);
+        fetchHargaPerHari("mobil", idMobilDropdown, mobilMap, (harga) -> {
+            mobilHargaPerHari = harga;
+            updateTotalHarga();
+        });
     }
 
     private void fetchSopirHargaPerHari() {
-        fetchHargaPerHari("sopir", idSopirDropdown, sopirMap, (harga) -> sopirHargaPerHari = harga);
+        fetchHargaPerHari("sopir", idSopirDropdown, sopirMap, (harga) -> {
+            sopirHargaPerHari = harga;
+            updateTotalHarga();
+        });
     }
 
     private void fetchHargaPerHari(String tableName, JComboBox<String> dropdown, Map<String, Integer> map, java.util.function.Consumer<Double> hargaConsumer) {
@@ -155,7 +162,6 @@ public class EditDialog extends JDialog {
             if (rs.next()) {
                 double harga = rs.getDouble("harga_sewa_per_hari");
                 hargaConsumer.accept(harga);
-                updateTotalHarga();
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error loading harga from " + tableName, "Database Error", JOptionPane.ERROR_MESSAGE);
@@ -194,13 +200,22 @@ public class EditDialog extends JDialog {
             SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
             Date startDate = dateFormat.parse(tanggalMulaiField.getText());
             Date endDate = dateFormat.parse(tanggalSelesaiField.getText());
+            Date returnDate = dateFormat.parse(tanggalKembaliField.getText());
 
-            long daysBetween = ChronoUnit.DAYS.between(startDate.toInstant(), endDate.toInstant());
+            if (startDate.after(endDate)) {
+                JOptionPane.showMessageDialog(this, "Tanggal mulai tidak boleh setelah tanggal selesai.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-            double totalHarga = (mobilHargaPerHari + sopirHargaPerHari) * (daysBetween + 1);
+            long daysBetween = ChronoUnit.DAYS.between(startDate.toInstant(), returnDate.toInstant()) + 1;
+            double totalHarga = (mobilHargaPerHari + sopirHargaPerHari) * daysBetween;
+
+            // Ensure the total price is a valid number
             totalHargaField.setValue(totalHarga);
         } catch (ParseException e) {
-            JOptionPane.showMessageDialog(this, "Invalid date format.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Format tanggal tidak valid.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Error formatting total harga.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -235,44 +250,23 @@ public class EditDialog extends JDialog {
         SimpleDateFormat inputDateFormat = new SimpleDateFormat("dd-MM-yyyy");
         SimpleDateFormat dbDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-        // Mengambil nilai tanggal dari field dan memeriksa apakah tidak kosong
         String tanggalMulaiText = tanggalMulaiField.getText().trim();
         String tanggalSelesaiText = tanggalSelesaiField.getText().trim();
         String tanggalKembaliText = tanggalKembaliField.getText().trim();
 
-        // Validasi dan parsing tanggal hanya jika tidak kosong
-        String formattedTanggalMulai = null;
-        String formattedTanggalSelesai = null;
-        String formattedTanggalKembali = null;
+        String formattedTanggalMulai = dbDateFormat.format(inputDateFormat.parse(tanggalMulaiText));
+        String formattedTanggalSelesai = dbDateFormat.format(inputDateFormat.parse(tanggalSelesaiText));
+        String formattedTanggalKembali = tanggalKembaliText.isEmpty() ? null : dbDateFormat.format(inputDateFormat.parse(tanggalKembaliText));
 
-        if (!tanggalMulaiText.isEmpty()) {
-            formattedTanggalMulai = dbDateFormat.format(inputDateFormat.parse(tanggalMulaiText));
-        } else {
-            JOptionPane.showMessageDialog(this, "Tanggal Mulai harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        if (!tanggalSelesaiText.isEmpty()) {
-            formattedTanggalSelesai = dbDateFormat.format(inputDateFormat.parse(tanggalSelesaiText));
-        } else {
-            JOptionPane.showMessageDialog(this, "Tanggal Selesai harus diisi.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        if (!tanggalKembaliText.isEmpty()) {
-            formattedTanggalKembali = dbDateFormat.format(inputDateFormat.parse(tanggalKembaliText));
-        }
-
-        // Menghitung denda jika tanggal kembali melewati hari ini
         double denda = 0.0;
-        if (!tanggalKembaliText.isEmpty()) {
+        if (formattedTanggalKembali != null) {
             Date today = new Date();
             Date tanggalKembali = inputDateFormat.parse(tanggalKembaliText);
 
             if (tanggalKembali.before(today)) {
                 long daysLate = ChronoUnit.DAYS.between(tanggalKembali.toInstant(), today.toInstant());
-                denda = daysLate * (mobilHargaPerHari + sopirHargaPerHari); // Menghitung denda
-                dendaField.setValue(denda); // Menampilkan denda pada field denda
+                denda = daysLate * (mobilHargaPerHari + sopirHargaPerHari);
+                dendaField.setValue(denda);
             }
         }
 
@@ -290,14 +284,11 @@ public class EditDialog extends JDialog {
             pstmt.setInt(3, sopirMap.get(idSopirDropdown.getSelectedItem().toString()));
             pstmt.setString(4, formattedTanggalMulai);
             pstmt.setString(5, formattedTanggalSelesai);
-
-            // Mengatur tanggal kembali sebagai NULL jika kosong
             if (formattedTanggalKembali != null) {
                 pstmt.setString(6, formattedTanggalKembali);
             } else {
                 pstmt.setNull(6, java.sql.Types.DATE);
             }
-
             pstmt.setDouble(7, Double.parseDouble(totalHargaField.getValue().toString().replace(",", ".")));
             pstmt.setString(8, statusField.getSelectedItem().toString());
             pstmt.setDouble(9, denda);
@@ -334,7 +325,7 @@ public class EditDialog extends JDialog {
     }
 
     private JFormattedTextField createCurrencyField(String valueText) {
-        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+        NumberFormat currencyFormat = NumberFormat.getNumberInstance(new Locale("id", "ID"));
         NumberFormatter currencyFormatter = new NumberFormatter(currencyFormat);
         currencyFormatter.setValueClass(Double.class);
         currencyFormatter.setMinimum(0.0);
@@ -346,7 +337,12 @@ public class EditDialog extends JDialog {
         if (valueText == null || valueText.isEmpty()) {
             currencyField.setValue(0.0);
         } else {
-            currencyField.setValue(Double.parseDouble(valueText.replaceAll("[^\\d,]", "").replace(",", ".")));
+            try {
+                Number number = currencyFormat.parse(valueText);
+                currencyField.setValue(number.doubleValue());
+            } catch (ParseException e) {
+                currencyField.setValue(0.0);
+            }
         }
 
         return currencyField;

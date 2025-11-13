@@ -75,11 +75,8 @@ public class DatabaseManager {
              PreparedStatement ps = conn.prepareStatement(checkSql)) {
 
             ps.setInt(1, mobilId);  // Set ID mobil yang akan dicek
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                // Jika ada pemesanan yang terkait dengan mobil tersebut
-                if (rs.getInt(1) > 0) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
                     // Ada pemesanan, berarti mobil tidak bisa dihapus
                     return false;
                 }
@@ -155,10 +152,11 @@ public class DatabaseManager {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(checkSql)) {
             ps.setInt(1, pelangganId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next() && rs.getInt(1) > 0) {
-                // Jika ada pemesanan terkait, return false
-                return false;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    // Jika ada pemesanan terkait, return false
+                    return false;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -172,12 +170,8 @@ public class DatabaseManager {
              PreparedStatement ps = conn.prepareStatement(checkSql)) {
 
             ps.setInt(1, sopirId);  // Set ID sopir yang akan dicek
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                int count = rs.getInt(1);
-                System.out.println("Jumlah pemesanan yang terkait dengan sopir ID " + sopirId + ": " + count);
-                if (count > 0) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
                     // Jika ada pemesanan, berarti sopir tidak bisa dihapus
                     return false;
                 }
@@ -214,5 +208,4 @@ public class DatabaseManager {
             return false; // Tidak dapat dihapus
         }
     }
-
 }
